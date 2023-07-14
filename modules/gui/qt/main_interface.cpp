@@ -52,6 +52,7 @@
 #include <QUrl>
 #include <QSize>
 #include <QDate>
+#include <QDateTime>
 #include <QMimeData>
 
 #include <QWindow>
@@ -109,6 +110,8 @@ MainInterface::MainInterface( intf_thread_t *_p_intf ) : QVLCMW( _p_intf )
     playlistVisible      = false;
     input_name           = "";
     b_interfaceFullScreen= false;
+    i_lastFullScreenNum = 0;
+    i64_lastFullScreenToggleTime = QDateTime::currentMSecsSinceEpoch();
     b_hasPausedWhenMinimized = false;
     i_kc_offset          = false;
     b_maximizedView      = false;
@@ -859,10 +862,35 @@ void MainInterface::videoSizeChanged( int w, int h )
 
 void MainInterface::setVideoFullScreen( bool fs )
 {
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    qint64 prev_FullScreenToggleTime = i64_lastFullScreenToggleTime;
+    i64_lastFullScreenToggleTime = now;
+
     b_videoFullScreen = fs;
     if( fs )
     {
         int numscreen = var_InheritInteger( p_intf, "qt-fullscreen-screennumber" );
+
+        // If hit fullscreen hotkey for second time quickly then toggle
+        // to next fullscreen. Else, just do the normal thing.
+        if (numscreen == -1) // automatic
+        {
+            if (now - prev_FullScreenToggleTime < 1000)
+            {
+                // advance to the next screen (with wraparound)
+                numscreen = (i_lastFullScreenNum + 1) % QApplication::desktop()->screenCount();
+                i_lastFullScreenNum = numscreen;
+            }
+            else
+            {
+                // save the current screen number for next time
+                int num = 0;
+                for (num = 0; num < QApplication::desktop()->screenCount(); num++)
+                    if (QGuiApplication::screens()[num] == windowHandle()->screen())
+                        break;
+                i_lastFullScreenNum = num;
+            }
+        }
 
         if ( numscreen >= 0 && numscreen < QApplication::desktop()->screenCount() )
         {

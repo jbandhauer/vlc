@@ -198,6 +198,8 @@ protected:
 
     static const Qt::Key kc[10]; /* easter eggs */
     int i_kc_offset;
+    int i_lastFullScreenNum;
+    qint64 i64_lastFullScreenToggleTime;
 
 public slots:
     void dockPlaylist( bool b_docked = true );
